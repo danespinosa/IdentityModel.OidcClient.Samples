@@ -10,7 +10,7 @@ namespace ConsoleClientWithBrowser
 {
     public class Program
     {
-        static string _authority = "https://demo.duendesoftware.com";
+        static string _authority = "https://auth.simplisafe.com/";
         static string _api = "https://demo.duendesoftware.com/api/test";
 
         static OidcClient _oidcClient;
@@ -35,14 +35,25 @@ namespace ConsoleClientWithBrowser
             // create a redirect URI using an available port on the loopback address.
             // requires the OP to allow random ports on 127.0.0.1 - otherwise set a static port
             var browser = new SystemBrowser();
-            string redirectUri = string.Format($"http://127.0.0.1:{browser.Port}");
+            //string redirectUri = string.Format($"http://127.0.0.1:{browser.Port}");
+            string redirectUri = string.Format($"com.simplisafe.mobile://auth.simplisafe.com/ios/com.simplisafe.mobile/callback");
+
+            //var options = new OidcClientOptions
+            //{
+            //    Authority = _authority,
+            //    ClientId = "interactive.public",
+            //    RedirectUri = redirectUri,
+            //    Scope = "openid profile api",
+            //    FilterClaims = false,
+            //    Browser = browser,
+            //};
 
             var options = new OidcClientOptions
             {
                 Authority = _authority,
-                ClientId = "interactive.public",
+                ClientId = "42aBZ5lYrVW12jfOuu3CQROitwxg9sN5",
                 RedirectUri = redirectUri,
-                Scope = "openid profile api",
+                Scope = "offline_access email openid https://api.simplisafe.com/scopes/user:platform",
                 FilterClaims = false,
                 Browser = browser,
             };
@@ -56,10 +67,30 @@ namespace ConsoleClientWithBrowser
             options.LoggerFactory.AddSerilog(serilog);
 
             _oidcClient = new OidcClient(options);
-            var result = await _oidcClient.LoginAsync(new LoginRequest());
+            var parameters = new Parameters();
+            parameters.Add("audience", "https://api.simplisafe.com/");
+            parameters.Add("auth0Client", "eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiMTUuMCIsInN3aWZ0IjoiNS54In0sInZlcnNpb24iOiIxLjMzLjAifQ");
+            //parameters.Add("audience", "https://api.simplisafe.com/");
+            //parameters.Add("auth0Client", "eyJuYW1lIjoiQXV0aDAuc3dpZnQiLCJlbnYiOnsiaU9TIjoiMTUuMCIsInN3aWZ0IjoiNS54In0sInZlcnNpb24iOiIxLjMzLjAifQ"); parameters.Add("audience", "https://api.simplisafe.com/");
+            var state = await _oidcClient.PrepareLoginAsync(parameters);
 
-            ShowResult(result);
-            await NextSteps(result);
+            Console.WriteLine("Use this login URL in the browser");
+            Console.WriteLine(state.StartUrl);
+            Console.WriteLine("Enter the callback url from the browser's console it starts with com.simplesafe");
+            var callbackUrl = Console.ReadLine();
+            var response = await _oidcClient.ProcessResponseAsync(callbackUrl, state);
+            Console.WriteLine("--- Access token ---");
+            Console.WriteLine(response.AccessToken);
+            Console.WriteLine("--- Refresh Token ---");
+            Console.WriteLine(response.RefreshToken);
+
+            ////var request = new LoginRequest();
+            ////request.FrontChannelExtraParameters = parameters;
+            ////var result = await _oidcClient.LoginAsync(new LoginRequest());
+
+            //ShowResult(result);
+            //await NextSteps(result);
+            ;
         }
 
         private static void ShowResult(LoginResult result)
